@@ -36,13 +36,19 @@ jobs:
       - name: Archive build
         run: tar -C excel-comparison -czf nuxt-output.tar.gz .output
 
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
       - name: Copy build to VM
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           port: ${{ secrets.VM_SSH_PORT }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key_path: ~/.ssh/deploy_key
           source: nuxt-output.tar.gz
           target: /var/www/excel-comparison/releases/${{ github.sha }}
 
@@ -56,7 +62,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           port: ${{ secrets.VM_SSH_PORT }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key_path: ~/.ssh/deploy_key
           script: |
             set -e
             APP_DIR=/var/www/excel-comparison
