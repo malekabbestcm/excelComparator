@@ -41,6 +41,10 @@ jobs:
 
       - name: Deploy on VM
         uses: appleboy/ssh-action@v0.1.10
+        env:
+          N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
+          APP_PORT: ${{ secrets.APP_PORT }}
+          COMMIT_SHA: ${{ github.sha }}
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
@@ -49,7 +53,7 @@ jobs:
           script: |
             set -e
             APP_DIR=/var/www/excel-comparison
-            RELEASE=${APP_DIR}/releases/${{ github.sha }}
+            RELEASE=${APP_DIR}/releases/${COMMIT_SHA}
             CURRENT=${APP_DIR}/current
             sudo mkdir -p ${APP_DIR}/releases
             sudo tar -xzf ${RELEASE}/nuxt-output.tar.gz -C ${RELEASE}
@@ -58,9 +62,9 @@ jobs:
               curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
               sudo apt-get install -y nodejs
             fi
-            sudo tee ${APP_DIR}/.env >/dev/null <<EOF
-N8N_WEBHOOK_URL=${{ secrets.N8N_WEBHOOK_URL }}
-PORT=${{ secrets.APP_PORT }}
+            sudo bash -c "cat > ${APP_DIR}/.env" <<EOF
+N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}
+PORT=${APP_PORT}
 NODE_ENV=production
 EOF
             if [ ! -f /etc/systemd/system/excel-comparison.service ]; then
