@@ -131,7 +131,7 @@ jobs:
               printf "%s\n" "NODE_ENV=production" >> ${USER_APP_DIR}/.env
               ln -sfn ${RELEASE} ${CURRENT}
               if command -v node >/dev/null 2>&1; then
-                nohup /usr/bin/node ${CURRENT}/server/index.mjs > ${USER_APP_DIR}/logs/app.log 2>&1 & echo $! > ${USER_APP_DIR}/app.pid
+                nohup /usr/bin/node ${CURRENT}/.output/server/index.mjs > ${USER_APP_DIR}/logs/app.log 2>&1 & echo $! > ${USER_APP_DIR}/app.pid
               else
                 echo "Node.js is not installed and sudo is not available; please install Node or grant admin."
                 exit 1
@@ -212,7 +212,7 @@ jobs:
               printf "%s\n" "NODE_ENV=production" >> ${USER_APP_DIR}/.env
               ln -sfn ${RELEASE} ${CURRENT}
               if command -v node >/dev/null 2>&1; then
-                nohup /usr/bin/node ${CURRENT}/server/index.mjs > ${USER_APP_DIR}/logs/app.log 2>&1 & echo $! > ${USER_APP_DIR}/app.pid
+                nohup /usr/bin/node ${CURRENT}/.output/server/index.mjs > ${USER_APP_DIR}/logs/app.log 2>&1 & echo $! > ${USER_APP_DIR}/app.pid
               else
                 echo "Node.js is not installed and sudo is not available; please install Node or grant admin."
                 exit 1
