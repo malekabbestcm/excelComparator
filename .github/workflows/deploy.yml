@@ -63,7 +63,8 @@ jobs:
       - name: Copy build to VM (gcloud)
         if: env.USE_GCLOUD == 'true'
         run: |
-          gcloud compute scp nuxt-output.tar.gz ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }}:/var/www/excel-comparison/releases/${{ github.sha }} --zone=${{ secrets.GCE_ZONE }} --quiet
+          gcloud compute ssh ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }} --zone=${{ secrets.GCE_ZONE }} --quiet --command 'sudo mkdir -p /var/www/excel-comparison/releases/${{ github.sha }}'
+          gcloud compute scp nuxt-output.tar.gz ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }}:/var/www/excel-comparison/releases/${{ github.sha }}/nuxt-output.tar.gz --zone=${{ secrets.GCE_ZONE }} --quiet
 
       - name: Copy build to VM (SSH)
         if: env.USE_GCLOUD != 'true'
