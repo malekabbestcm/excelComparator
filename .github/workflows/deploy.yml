@@ -30,7 +30,7 @@ jobs:
         run: tar -C excel-comparison -czf nuxt-output.tar.gz .output
 
       - name: Copy build to VM
-        uses: appleboy/scp-action@v0.1.10
+        uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
@@ -40,7 +40,7 @@ jobs:
           target: /var/www/excel-comparison/releases/${{ github.sha }}
 
       - name: Deploy on VM
-        uses: appleboy/ssh-action@v0.1.10
+        uses: appleboy/ssh-action@v1
         env:
           N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
           APP_PORT: ${{ secrets.APP_PORT }}
