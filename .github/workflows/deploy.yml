@@ -86,7 +86,7 @@ jobs:
             APP_DIR=/var/www/excel-comparison
             RELEASE=${APP_DIR}/releases/${{ github.sha }}
             CURRENT=${APP_DIR}/current
-            sudo mkdir -p ${APP_DIR}/releases
+            sudo mkdir -p ${RELEASE}
             sudo mv ~/nuxt-output.tar.gz ${RELEASE}/nuxt-output.tar.gz
             sudo tar -xzf ${RELEASE}/nuxt-output.tar.gz -C ${RELEASE}
             sudo rm ${RELEASE}/nuxt-output.tar.gz
@@ -115,9 +115,15 @@ jobs:
               > /etc/systemd/system/excel-comparison.service'
             fi
             sudo ln -sfn ${RELEASE} ${CURRENT}
+          '
+      - name: Restart service (gcloud)
+        if: env.USE_GCLOUD == 'true'
+        run: |
+          gcloud compute ssh ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }} --zone=${{ secrets.GCE_ZONE }} --quiet --command '
             sudo systemctl daemon-reload
             sudo systemctl enable excel-comparison
             sudo systemctl restart excel-comparison
+            sudo systemctl status --no-pager excel-comparison || true
           '
 
       - name: Deploy on VM (SSH)
@@ -138,7 +144,7 @@ jobs:
             APP_DIR=/var/www/excel-comparison
             RELEASE=${APP_DIR}/releases/${COMMIT_SHA}
             CURRENT=${APP_DIR}/current
-            sudo mkdir -p ${APP_DIR}/releases
+            sudo mkdir -p ${RELEASE}
             sudo mv ~/nuxt-output.tar.gz ${RELEASE}/nuxt-output.tar.gz
             sudo tar -xzf ${RELEASE}/nuxt-output.tar.gz -C ${RELEASE}
             sudo rm ${RELEASE}/nuxt-output.tar.gz
@@ -166,7 +172,18 @@ jobs:
                 "WantedBy=multi-user.target" \
               > /etc/systemd/system/excel-comparison.service'
             fi
-                        sudo ln -sfn ${RELEASE} ${CURRENT}
-                        sudo systemctl daemon-reload
-                        sudo systemctl enable excel-comparison
-                        sudo systemctl restart excel-comparison
+            sudo ln -sfn ${RELEASE} ${CURRENT}
+      - name: Restart service (SSH)
+        if: env.USE_GCLOUD != 'true'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          port: ${{ secrets.VM_SSH_PORT }}
+          key_path: ~/.ssh/deploy_key
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          script: |
+            sudo systemctl daemon-reload
+            sudo systemctl enable excel-comparison
+            sudo systemctl restart excel-comparison
+            sudo systemctl status --no-pager excel-comparison || true
