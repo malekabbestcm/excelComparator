@@ -102,15 +102,15 @@ jobs:
               if [ ! -f /etc/systemd/system/excel-comparison.service ]; then
                 sudo bash -c 'printf "%s\n" \
                   "[Unit]" \
-                  "Description=Excel Comparison Nuxt 3" \
-                  "After=network.target" \
+                  Description=Excel Comparison Node.js Application
+                  After=network.target   \
                   "" \
                   "[Service]" \
-                  "Type=simple" \
-                  "WorkingDirectory=${APP_DIR}/current" \
-                  "ExecStart=/usr/bin/node ${APP_DIR}/current/.output/server/index.mjs" \
-                  "Restart=always" \
-                  "EnvironmentFile=${APP_DIR}/.env" \
+                  User=${{ secrets.VM_USER }} 
+                  WorkingDirectory=/var/www/excel-comparison/current # This should point to your 'current' symlink
+                  ExecStart=/usr/bin/node /var/www/excel-comparison/current/server/index.mjs # Adjust path to node and your main app file
+                  Restart=always
+                  Environment=NODE_ENV=production\
                   "" \
                   "[Install]" \
                   "WantedBy=multi-user.target" \
