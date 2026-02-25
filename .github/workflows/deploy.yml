@@ -180,23 +180,44 @@ jobs:
               echo "N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}" | sudo tee ${APP_DIR}/.env >/dev/null
               echo "PORT=${APP_PORT}" | sudo tee -a ${APP_DIR}/.env >/dev/null
               echo "NODE_ENV=production" | sudo tee -a ${APP_DIR}/.env >/dev/null
-              if [ ! -f /etc/systemd/system/excel-comparison.service ]; then
-                sudo bash -c 'printf "%s\n" \
-                  "[Unit]" \
-                  "Description=Excel Comparison Nuxt 3" \
-                  "After=network.target" \
-                  "" \
-                  "[Service]" \
-                  "Type=simple" \
-                  "WorkingDirectory=${APP_DIR}/current" \
-                  "ExecStart=/usr/bin/node ${APP_DIR}/current/.output/server/index.mjs" \
-                  "Restart=always" \
-                  "EnvironmentFile=${APP_DIR}/.env" \
-                  "" \
-                  "[Install]" \
-                  "WantedBy=multi-user.target" \
-                > /etc/systemd/system/excel-comparison.service'
+              # Corrected check for systemd service file existence (if intended)
+              if [ -f "/etc/systemd/system/excel-comparison.service" ]; then
+                # Your existing logic related to the service if it exists
+                sudo ln -sfn "$RELEASE" "$CURRENT"
+                sudo systemctl daemon-reload
+                sudo systemctl enable excel-comparison
+                sudo systemctl restart excel-comparison
+              else
+                RELEASE="$USER_APP_DIR/releases/$RELEASE_SHA"
+                CURRENT="$USER_APP_DIR/current"
+                mkdir -p "$USER_APP_DIR/releases"
+                mkdir -p "$RELEASE"
+                mkdir -p "$USER_APP_DIR/logs"
+                mv ~/nuxt-output.tar.gz "$RELEASE/nuxt-output.tar.gz"
+                tar -xzf "$RELEASE/nuxt-output.tar.gz" -C "$RELEASE"
+                rm "$RELEASE/nuxt-output.tar.gz"
+                printf "%s\n" "N8N_WEBHOOK_URL=***" > "$USER_APP_DIR/.env"
+                printf "%s\n" "PORT=" >> "$USER_APP_DIR/.env"
+                printf "%s\n" "NODE_ENV=production" >> "$USER_APP_DIR/.env"
+                ln -sfn "$RELEASE" "$CURRENT"
+
+                # --- Add Node.js installation here ---
+                if ! command -v node >/dev/null 2>&1; then
+                  echo "Node.js not found. Installing..."
+                  # Example for Debian/Ubuntu, adjust for your OS
+                  sudo apt-get update
+                  sudo apt-get install -y nodejs npm
+                  if [ $? -ne 0 ]; then
+                    echo "Failed to install Node.js. Exiting."
+                    exit 1
+                  fi
+                fi
+                # --- End Node.js installation ---
+
+                # Now that Node.js is confirmed to be installed, start the application
+                nohup /usr/bin/node "$CURRENT/server/index.mjs" > "$USER_APP_DIR/logs/app.log" 2>&1 & echo $! > "$USER_APP_DIR/app.pid"
               fi
+
               sudo ln -sfn ${RELEASE} ${CURRENT}
             else
               RELEASE=${USER_APP_DIR}/releases/${RELEASE_SHA}
