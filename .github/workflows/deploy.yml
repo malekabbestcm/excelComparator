@@ -98,21 +98,21 @@ jobs:
             echo "PORT=${{ secrets.APP_PORT }}" | sudo tee -a ${APP_DIR}/.env >/dev/null
             echo "NODE_ENV=production" | sudo tee -a ${APP_DIR}/.env >/dev/null
             if [ ! -f /etc/systemd/system/excel-comparison.service ]; then
-              sudo tee /etc/systemd/system/excel-comparison.service >/dev/null <<UNIT
-            [Unit]
-            Description=Excel Comparison Nuxt 3
-            After=network.target
-
-            [Service]
-            Type=simple
-            WorkingDirectory=${APP_DIR}/current
-            ExecStart=/usr/bin/node ${APP_DIR}/current/server/index.mjs
-            Restart=always
-            EnvironmentFile=${APP_DIR}/.env
-
-            [Install]
-            WantedBy=multi-user.target
-            UNIT
+              sudo bash -c 'printf "%s\n" \
+                "[Unit]" \
+                "Description=Excel Comparison Nuxt 3" \
+                "After=network.target" \
+                "" \
+                "[Service]" \
+                "Type=simple" \
+                "WorkingDirectory=${APP_DIR}/current" \
+                "ExecStart=/usr/bin/node ${APP_DIR}/current/server/index.mjs" \
+                "Restart=always" \
+                "EnvironmentFile=${APP_DIR}/.env" \
+                "" \
+                "[Install]" \
+                "WantedBy=multi-user.target" \
+              > /etc/systemd/system/excel-comparison.service'
             fi
             sudo ln -sfn ${RELEASE} ${CURRENT}
             sudo systemctl daemon-reload
@@ -150,23 +150,22 @@ jobs:
             echo "PORT=${APP_PORT}" | sudo tee -a ${APP_DIR}/.env >/dev/null
             echo "NODE_ENV=production" | sudo tee -a ${APP_DIR}/.env >/dev/null
             if [ ! -f /etc/systemd/system/excel-comparison.service ]; then
-              sudo tee /etc/systemd/system/excel-comparison.service >/dev/null <<UNIT
-            [Unit]
-            Description=Excel Comparison Nuxt 3
-            After=network.target
-
-
-            [Service]
-            Type=simple
-            WorkingDirectory=${APP_DIR}/current
-            ExecStart=/usr/bin/node ${APP_DIR}/current/server/index.mjs
-            Restart=always
-            EnvironmentFile=${APP_DIR}/.env
-
-            [Install]
-            WantedBy=multi-user.target
-            UNIT
-                        fi
+              sudo bash -c 'printf "%s\n" \
+                "[Unit]" \
+                "Description=Excel Comparison Nuxt 3" \
+                "After=network.target" \
+                "" \
+                "[Service]" \
+                "Type=simple" \
+                "WorkingDirectory=${APP_DIR}/current" \
+                "ExecStart=/usr/bin/node ${APP_DIR}/current/server/index.mjs" \
+                "Restart=always" \
+                "EnvironmentFile=${APP_DIR}/.env" \
+                "" \
+                "[Install]" \
+                "WantedBy=multi-user.target" \
+              > /etc/systemd/system/excel-comparison.service'
+            fi
                         sudo ln -sfn ${RELEASE} ${CURRENT}
                         sudo systemctl daemon-reload
                         sudo systemctl enable excel-comparison
