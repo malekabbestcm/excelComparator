@@ -9,6 +9,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: vm
+    env:
+      USE_GCLOUD: ${{ vars.USE_GCLOUD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,18 +38,88 @@ jobs:
       - name: Archive build
         run: tar -C excel-comparison -czf nuxt-output.tar.gz .output
 
-      - name: Copy build to VM
+      - name: Prepare SSH key
+        if: env.USE_GCLOUD != 'true'
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Auth to Google Cloud
+        if: env.USE_GCLOUD == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        if: env.USE_GCLOUD == 'true'
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          install_components: beta
+          export_default_credentials: true
+
+      - name: Copy build to VM (gcloud)
+        if: env.USE_GCLOUD == 'true'
+        run: |
+          gcloud compute scp nuxt-output.tar.gz ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }}:/var/www/excel-comparison/releases/${{ github.sha }} --zone=${{ secrets.GCE_ZONE }} --quiet
+
+      - name: Copy build to VM (SSH)
+        if: env.USE_GCLOUD != 'true'
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           port: ${{ secrets.VM_SSH_PORT }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key_path: ~/.ssh/deploy_key
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           source: nuxt-output.tar.gz
           target: /var/www/excel-comparison/releases/${{ github.sha }}
 
-      - name: Deploy on VM
+      - name: Deploy on VM (gcloud)
+        if: env.USE_GCLOUD == 'true'
+        run: |
+          gcloud compute ssh ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }} --zone=${{ secrets.GCE_ZONE }} --quiet --command '
+            set -e
+            APP_DIR=/var/www/excel-comparison
+            RELEASE=${APP_DIR}/releases/${{ github.sha }}
+            CURRENT=${APP_DIR}/current
+            sudo mkdir -p ${APP_DIR}/releases
+            sudo tar -xzf ${RELEASE}/nuxt-output.tar.gz -C ${RELEASE}
+            sudo rm ${RELEASE}/nuxt-output.tar.gz
+            if ! command -v node >/dev/null 2>&1; then
+              curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+              sudo apt-get install -y nodejs
+            fi
+            echo "N8N_WEBHOOK_URL=${{ secrets.N8N_WEBHOOK_URL }}" | sudo tee ${APP_DIR}/.env >/dev/null
+            echo "PORT=${{ secrets.APP_PORT }}" | sudo tee -a ${APP_DIR}/.env >/dev/null
+            echo "NODE_ENV=production" | sudo tee -a ${APP_DIR}/.env >/dev/null
+            if [ ! -f /etc/systemd/system/excel-comparison.service ]; then
+              sudo tee /etc/systemd/system/excel-comparison.service >/dev/null <<UNIT
+            [Unit]
+            Description=Excel Comparison Nuxt 3
+            After=network.target
+
+            [Service]
+            Type=simple
+            WorkingDirectory=${APP_DIR}/current
+            ExecStart=/usr/bin/node ${APP_DIR}/current/server/index.mjs
+            Restart=always
+            EnvironmentFile=${APP_DIR}/.env
+
+            [Install]
+            WantedBy=multi-user.target
+            UNIT
+            fi
+            sudo ln -sfn ${RELEASE} ${CURRENT}
+            sudo systemctl daemon-reload
+            sudo systemctl enable excel-comparison
+            sudo systemctl restart excel-comparison
+          '
+
+      - name: Deploy on VM (SSH)
+        if: env.USE_GCLOUD != 'true'
         uses: appleboy/ssh-action@v1
         env:
           N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
@@ -57,7 +129,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           port: ${{ secrets.VM_SSH_PORT }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key_path: ~/.ssh/deploy_key
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
             set -e
