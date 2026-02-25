@@ -108,7 +108,7 @@ jobs:
                   "[Service]" \
                   "Type=simple" \
                   "WorkingDirectory=${APP_DIR}/current" \
-                  "ExecStart=/usr/bin/node ${APP_DIR}/current/server/index.mjs" \
+                  "ExecStart=/usr/bin/node ${APP_DIR}/current/.output/server/index.mjs" \
                   "Restart=always" \
                   "EnvironmentFile=${APP_DIR}/.env" \
                   "" \
@@ -121,6 +121,7 @@ jobs:
               RELEASE=${USER_APP_DIR}/releases/${RELEASE_SHA}
               CURRENT=${USER_APP_DIR}/current
               mkdir -p ${USER_APP_DIR}/releases
+              mkdir -p ${RELEASE}
               mkdir -p ${USER_APP_DIR}/logs
               mv ~/nuxt-output.tar.gz ${RELEASE}/nuxt-output.tar.gz
               tar -xzf ${RELEASE}/nuxt-output.tar.gz -C ${RELEASE}
@@ -188,7 +189,7 @@ jobs:
                   "[Service]" \
                   "Type=simple" \
                   "WorkingDirectory=${APP_DIR}/current" \
-                  "ExecStart=/usr/bin/node ${APP_DIR}/current/server/index.mjs" \
+                  "ExecStart=/usr/bin/node ${APP_DIR}/current/.output/server/index.mjs" \
                   "Restart=always" \
                   "EnvironmentFile=${APP_DIR}/.env" \
                   "" \
@@ -201,6 +202,7 @@ jobs:
               RELEASE=${USER_APP_DIR}/releases/${RELEASE_SHA}
               CURRENT=${USER_APP_DIR}/current
               mkdir -p ${USER_APP_DIR}/releases
+              mkdir -p ${RELEASE}
               mkdir -p ${USER_APP_DIR}/logs
               mv ~/nuxt-output.tar.gz ${RELEASE}/nuxt-output.tar.gz
               tar -xzf ${RELEASE}/nuxt-output.tar.gz -C ${RELEASE}
