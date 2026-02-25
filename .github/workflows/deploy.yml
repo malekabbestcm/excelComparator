@@ -64,7 +64,7 @@ jobs:
         if: env.USE_GCLOUD == 'true'
         run: |
           gcloud compute ssh ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }} --zone=${{ secrets.GCE_ZONE }} --quiet --command 'sudo mkdir -p /var/www/excel-comparison/releases/${{ github.sha }}'
-          gcloud compute scp nuxt-output.tar.gz ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }}:/var/www/excel-comparison/releases/${{ github.sha }}/nuxt-output.tar.gz --zone=${{ secrets.GCE_ZONE }} --quiet
+          gcloud compute scp nuxt-output.tar.gz ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }}:~/nuxt-output.tar.gz --zone=${{ secrets.GCE_ZONE }} --quiet
 
       - name: Copy build to VM (SSH)
         if: env.USE_GCLOUD != 'true'
@@ -76,7 +76,7 @@ jobs:
           key_path: ~/.ssh/deploy_key
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           source: nuxt-output.tar.gz
-          target: /var/www/excel-comparison/releases/${{ github.sha }}
+          target: ~/nuxt-output.tar.gz
 
       - name: Deploy on VM (gcloud)
         if: env.USE_GCLOUD == 'true'
@@ -87,6 +87,7 @@ jobs:
             RELEASE=${APP_DIR}/releases/${{ github.sha }}
             CURRENT=${APP_DIR}/current
             sudo mkdir -p ${APP_DIR}/releases
+            sudo mv ~/nuxt-output.tar.gz ${RELEASE}/nuxt-output.tar.gz
             sudo tar -xzf ${RELEASE}/nuxt-output.tar.gz -C ${RELEASE}
             sudo rm ${RELEASE}/nuxt-output.tar.gz
             if ! command -v node >/dev/null 2>&1; then
@@ -138,6 +139,7 @@ jobs:
             RELEASE=${APP_DIR}/releases/${COMMIT_SHA}
             CURRENT=${APP_DIR}/current
             sudo mkdir -p ${APP_DIR}/releases
+            sudo mv ~/nuxt-output.tar.gz ${RELEASE}/nuxt-output.tar.gz
             sudo tar -xzf ${RELEASE}/nuxt-output.tar.gz -C ${RELEASE}
             sudo rm ${RELEASE}/nuxt-output.tar.gz
             if ! command -v node >/dev/null 2>&1; then
