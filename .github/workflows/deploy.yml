@@ -62,29 +62,28 @@ jobs:
               curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
               sudo apt-get install -y nodejs
             fi
-            sudo bash -c "cat > ${APP_DIR}/.env" <<EOF
-N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}
-PORT=${APP_PORT}
-NODE_ENV=production
-EOF
+            echo "N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}" | sudo tee ${APP_DIR}/.env >/dev/null
+            echo "PORT=${APP_PORT}" | sudo tee -a ${APP_DIR}/.env >/dev/null
+            echo "NODE_ENV=production" | sudo tee -a ${APP_DIR}/.env >/dev/null
             if [ ! -f /etc/systemd/system/excel-comparison.service ]; then
               sudo tee /etc/systemd/system/excel-comparison.service >/dev/null <<UNIT
-[Unit]
-Description=Excel Comparison Nuxt 3
-After=network.target
+            [Unit]
+            Description=Excel Comparison Nuxt 3
+            After=network.target
 
-[Service]
-Type=simple
-WorkingDirectory=${APP_DIR}/current
-ExecStart=/usr/bin/node ${APP_DIR}/current/server/index.mjs
-Restart=always
-EnvironmentFile=${APP_DIR}/.env
 
-[Install]
-WantedBy=multi-user.target
-UNIT
-            fi
-            sudo ln -sfn ${RELEASE} ${CURRENT}
-            sudo systemctl daemon-reload
-            sudo systemctl enable excel-comparison
-            sudo systemctl restart excel-comparison
+            [Service]
+            Type=simple
+            WorkingDirectory=${APP_DIR}/current
+            ExecStart=/usr/bin/node ${APP_DIR}/current/server/index.mjs
+            Restart=always
+            EnvironmentFile=${APP_DIR}/.env
+
+            [Install]
+            WantedBy=multi-user.target
+            UNIT
+                        fi
+                        sudo ln -sfn ${RELEASE} ${CURRENT}
+                        sudo systemctl daemon-reload
+                        sudo systemctl enable excel-comparison
+                        sudo systemctl restart excel-comparison
