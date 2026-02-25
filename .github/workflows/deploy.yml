@@ -21,7 +21,12 @@ jobs:
 
       - name: Install dependencies
         working-directory: excel-comparison
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci || npm install
+          else
+            npm install
+          fi
 
       - name: Build
         working-directory: excel-comparison
