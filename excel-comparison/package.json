@@ -1,0 +1,25 @@
+{
+  "name": "excel-comparison",
+  "version": "1.0.0",
+  "description": "Professional Excel file comparison tool with n8n webhook integration",
+  "main": "index.js",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["excel", "comparison", "n8n", "webhook", "file-upload"],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@heroicons/vue": "^2.2.0",
+    "@nuxtjs/color-mode": "^4.0.0",
+    "@nuxtjs/tailwindcss": "^6.14.0",
+    "@pinia/nuxt": "^0.11.3",
+    "nuxt": "^3.21.1"
+  }
+}
