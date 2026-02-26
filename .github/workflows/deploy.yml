@@ -38,6 +38,24 @@ jobs:
       - name: Archive build
         run: tar -C excel-comparison -czf nuxt-output.tar.gz .output
 
+      - name: Generate systemd unit
+        run: |
+          cat > excel-comparison.service <<'UNIT'
+          [Unit]
+          Description=Excel Comparison Nuxt 3
+          After=network.target
+
+          [Service]
+          Type=simple
+          WorkingDirectory=/var/www/excel-comparison/current
+          ExecStart=/usr/bin/node /var/www/excel-comparison/current/.output/server/index.mjs
+          Restart=always
+          EnvironmentFile=/var/www/excel-comparison/.env
+
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+
       - name: Prepare SSH key
         if: env.USE_GCLOUD != 'true'
         shell: bash
@@ -64,6 +82,7 @@ jobs:
         if: env.USE_GCLOUD == 'true'
         run: |
           gcloud compute scp nuxt-output.tar.gz ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }}:~/nuxt-output.tar.gz --zone=${{ secrets.GCE_ZONE }} --quiet
+          gcloud compute scp excel-comparison.service ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }}:~/excel-comparison.service --zone=${{ secrets.GCE_ZONE }} --quiet
 
       - name: Copy build to VM (SSH)
         if: env.USE_GCLOUD != 'true'
@@ -74,8 +93,8 @@ jobs:
           port: ${{ secrets.VM_SSH_PORT }}
           key_path: ~/.ssh/deploy_key
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
-          source: nuxt-output.tar.gz
-          target: ~/nuxt-output.tar.gz
+          source: "nuxt-output.tar.gz,excel-comparison.service"
+          target: ~/
 
       - name: Deploy on VM (gcloud)
         if: env.USE_GCLOUD == 'true'
@@ -99,23 +118,7 @@ jobs:
               echo "N8N_WEBHOOK_URL=${{ secrets.N8N_WEBHOOK_URL }}" | sudo tee ${APP_DIR}/.env >/dev/null
               echo "PORT=${{ secrets.APP_PORT }}" | sudo tee -a ${APP_DIR}/.env >/dev/null
               echo "NODE_ENV=production" | sudo tee -a ${APP_DIR}/.env >/dev/null
-              if [ ! -f /etc/systemd/system/excel-comparison.service ]; then
-                sudo bash -c 'printf "%s\n" \
-                  "[Unit]" \
-                  Description=Excel Comparison Node.js Application
-                  After=network.target   \
-                  "" \
-                  "[Service]" \
-                  User=${{ secrets.VM_USER }} 
-                  WorkingDirectory=/var/www/excel-comparison/current # This should point to your 'current' symlink
-                  ExecStart=/usr/bin/node /var/www/excel-comparison/current/server/index.mjs # Adjust path to node and your main app file
-                  Restart=always
-                  Environment=NODE_ENV=production\
-                  "" \
-                  "[Install]" \
-                  "WantedBy=multi-user.target" \
-                > /etc/systemd/system/excel-comparison.service'
-              fi
+              sudo mv ~/excel-comparison.service /etc/systemd/system/excel-comparison.service
               sudo ln -sfn ${RELEASE} ${CURRENT}
             else
               RELEASE=${USER_APP_DIR}/releases/${RELEASE_SHA}
@@ -180,43 +183,7 @@ jobs:
               echo "N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}" | sudo tee ${APP_DIR}/.env >/dev/null
               echo "PORT=${APP_PORT}" | sudo tee -a ${APP_DIR}/.env >/dev/null
               echo "NODE_ENV=production" | sudo tee -a ${APP_DIR}/.env >/dev/null
-              # Corrected check for systemd service file existence (if intended)
-              if [ -f "/etc/systemd/system/excel-comparison.service" ]; then
-                # Your existing logic related to the service if it exists
-                sudo ln -sfn "$RELEASE" "$CURRENT"
-                sudo systemctl daemon-reload
-                sudo systemctl enable excel-comparison
-                sudo systemctl restart excel-comparison
-              else
-                RELEASE="$USER_APP_DIR/releases/$RELEASE_SHA"
-                CURRENT="$USER_APP_DIR/current"
-                mkdir -p "$USER_APP_DIR/releases"
-                mkdir -p "$RELEASE"
-                mkdir -p "$USER_APP_DIR/logs"
-                mv ~/nuxt-output.tar.gz "$RELEASE/nuxt-output.tar.gz"
-                tar -xzf "$RELEASE/nuxt-output.tar.gz" -C "$RELEASE"
-                rm "$RELEASE/nuxt-output.tar.gz"
-                printf "%s\n" "N8N_WEBHOOK_URL=***" > "$USER_APP_DIR/.env"
-                printf "%s\n" "PORT=" >> "$USER_APP_DIR/.env"
-                printf "%s\n" "NODE_ENV=production" >> "$USER_APP_DIR/.env"
-                ln -sfn "$RELEASE" "$CURRENT"
-
-                # --- Add Node.js installation here ---
-                if ! command -v node >/dev/null 2>&1; then
-                  echo "Node.js not found. Installing..."
-                  # Example for Debian/Ubuntu, adjust for your OS
-                  sudo apt-get update
-                  sudo apt-get install -y nodejs npm
-                  if [ $? -ne 0 ]; then
-                    echo "Failed to install Node.js. Exiting."
-                    exit 1
-                  fi
-                fi
-                # --- End Node.js installation ---
-
-                # Now that Node.js is confirmed to be installed, start the application
-                nohup /usr/bin/node "$CURRENT/server/index.mjs" > "$USER_APP_DIR/logs/app.log" 2>&1 & echo $! > "$USER_APP_DIR/app.pid"
-              fi
+              sudo mv ~/excel-comparison.service /etc/systemd/system/excel-comparison.service
 
               sudo ln -sfn ${RELEASE} ${CURRENT}
             else
