@@ -118,6 +118,7 @@ jobs:
               echo "N8N_WEBHOOK_URL=${{ secrets.N8N_WEBHOOK_URL }}" | sudo tee ${APP_DIR}/.env >/dev/null
               echo "PORT=${{ secrets.APP_PORT }}" | sudo tee -a ${APP_DIR}/.env >/dev/null
               echo "NODE_ENV=production" | sudo tee -a ${APP_DIR}/.env >/dev/null
+              echo "HOST=0.0.0.0" | sudo tee -a ${APP_DIR}/.env >/dev/null
               sudo mv ~/excel-comparison.service /etc/systemd/system/excel-comparison.service
               sudo ln -sfn ${RELEASE} ${CURRENT}
             else
@@ -132,6 +133,7 @@ jobs:
               printf "%s\n" "N8N_WEBHOOK_URL=${{ secrets.N8N_WEBHOOK_URL }}" > ${USER_APP_DIR}/.env
               printf "%s\n" "PORT=${{ secrets.APP_PORT }}" >> ${USER_APP_DIR}/.env
               printf "%s\n" "NODE_ENV=production" >> ${USER_APP_DIR}/.env
+              printf "%s\n" "HOST=0.0.0.0" >> ${USER_APP_DIR}/.env
               ln -sfn ${RELEASE} ${CURRENT}
               if command -v node >/dev/null 2>&1; then
                 nohup /usr/bin/node ${CURRENT}/.output/server/index.mjs > ${USER_APP_DIR}/logs/app.log 2>&1 & echo $! > ${USER_APP_DIR}/app.pid
@@ -183,6 +185,7 @@ jobs:
               echo "N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}" | sudo tee ${APP_DIR}/.env >/dev/null
               echo "PORT=${APP_PORT}" | sudo tee -a ${APP_DIR}/.env >/dev/null
               echo "NODE_ENV=production" | sudo tee -a ${APP_DIR}/.env >/dev/null
+              echo "HOST=0.0.0.0" | sudo tee -a ${APP_DIR}/.env >/dev/null
               sudo mv ~/excel-comparison.service /etc/systemd/system/excel-comparison.service
 
               sudo ln -sfn ${RELEASE} ${CURRENT}
@@ -198,6 +201,7 @@ jobs:
               printf "%s\n" "N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}" > ${USER_APP_DIR}/.env
               printf "%s\n" "PORT=${APP_PORT}" >> ${USER_APP_DIR}/.env
               printf "%s\n" "NODE_ENV=production" >> ${USER_APP_DIR}/.env
+              printf "%s\n" "HOST=0.0.0.0" >> ${USER_APP_DIR}/.env
               ln -sfn ${RELEASE} ${CURRENT}
               if command -v node >/dev/null 2>&1; then
                 nohup /usr/bin/node ${CURRENT}/.output/server/index.mjs > ${USER_APP_DIR}/logs/app.log 2>&1 & echo $! > ${USER_APP_DIR}/app.pid
@@ -206,6 +210,44 @@ jobs:
                 exit 1
               fi
             fi
+      - name: Verify service (gcloud)
+        if: env.USE_GCLOUD == 'true'
+        run: |
+          gcloud compute ssh ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }} --zone=${{ secrets.GCE_ZONE }} --quiet --command '
+            set -e
+            PORT=${{ secrets.APP_PORT }}
+            if sudo -n true 2>/dev/null; then
+              APP_DIR=/var/www/excel-comparison
+              CURRENT=${APP_DIR}/current
+              echo "[verify] app dir listing:"
+              sudo ls -l ${APP_DIR} || true
+              echo "[verify] current ->"
+              sudo readlink -f ${CURRENT} || true
+              echo "[verify] entrypoint:"
+              sudo test -f ${CURRENT}/.output/server/index.mjs && echo "ok" || echo "missing"
+              echo "[verify] listening ports:"
+              sudo ss -ltnp | grep ":${PORT} " || true
+              echo "[verify] curl localhost:"
+              curl -fsS http://127.0.0.1:${PORT}/ | head -c 200 || true
+              echo "[verify] last logs:"
+              sudo journalctl -u excel-comparison -n 100 --no-pager || true
+            else
+              APP_DIR=$HOME/apps/excel-comparison
+              CURRENT=${APP_DIR}/current
+              echo "[verify] app dir listing:"
+              ls -l ${APP_DIR} || true
+              echo "[verify] current ->"
+              readlink -f ${CURRENT} || true
+              echo "[verify] entrypoint:"
+              test -f ${CURRENT}/.output/server/index.mjs && echo "ok" || echo "missing"
+              echo "[verify] listening ports:"
+              ss -ltnp | grep ":${PORT} " || true
+              echo "[verify] curl localhost:"
+              curl -fsS http://127.0.0.1:${PORT}/ | head -c 200 || true
+              echo "[verify] last logs:"
+              tail -n 100 ${APP_DIR}/logs/app.log || true
+            fi
+          '
       - name: Restart service (SSH)
         if: env.USE_GCLOUD != 'true'
         uses: appleboy/ssh-action@v1
@@ -220,3 +262,46 @@ jobs:
             sudo systemctl enable excel-comparison
             sudo systemctl restart excel-comparison
             sudo systemctl status --no-pager excel-comparison || true
+      - name: Verify service (SSH)
+        if: env.USE_GCLOUD != 'true'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          port: ${{ secrets.VM_SSH_PORT }}
+          key_path: ~/.ssh/deploy_key
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          script: |
+            set -e
+            PORT=${APP_PORT}
+            if sudo -n true 2>/dev/null; then
+              APP_DIR=/var/www/excel-comparison
+              CURRENT=${APP_DIR}/current
+              echo "[verify] app dir listing:"
+              sudo ls -l ${APP_DIR} || true
+              echo "[verify] current ->"
+              sudo readlink -f ${CURRENT} || true
+              echo "[verify] entrypoint:"
+              sudo test -f ${CURRENT}/.output/server/index.mjs && echo "ok" || echo "missing"
+              echo "[verify] listening ports:"
+              sudo ss -ltnp | grep ":${PORT} " || true
+              echo "[verify] curl localhost:"
+              curl -fsS http://127.0.0.1:${PORT}/ | head -c 200 || true
+              echo "[verify] last logs:"
+              sudo journalctl -u excel-comparison -n 100 --no-pager || true
+            else
+              APP_DIR=$HOME/apps/excel-comparison
+              CURRENT=${APP_DIR}/current
+              echo "[verify] app dir listing:"
+              ls -l ${APP_DIR} || true
+              echo "[verify] current ->"
+              readlink -f ${CURRENT} || true
+              echo "[verify] entrypoint:"
+              test -f ${CURRENT}/.output/server/index.mjs && echo "ok" || echo "missing"
+              echo "[verify] listening ports:"
+              ss -ltnp | grep ":${PORT} " || true
+              echo "[verify] curl localhost:"
+              curl -fsS http://127.0.0.1:${PORT}/ | head -c 200 || true
+              echo "[verify] last logs:"
+              tail -n 100 ${APP_DIR}/logs/app.log || true
+            fi

@@ -1,5 +1,5 @@
 import process from 'node:process';globalThis._importMeta_={url:import.meta.url,env:process.env};import { tmpdir } from 'node:os';
-import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, sendRedirect, proxyRequest, getRequestHeader, setResponseHeaders, setResponseStatus, send, getRequestHeaders, setResponseHeader, appendResponseHeader, getRequestURL, getResponseHeader, removeResponseHeader, createError, getQuery as getQuery$1, readBody, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getResponseStatus, getRouterParam, getResponseStatusText } from 'file:///Users/maa/Desktop/JF/compareEx/excel-comparison/node_modules/h3/dist/index.mjs';
+import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, sendRedirect, proxyRequest, getRequestHeader, setResponseHeaders, setResponseStatus, send, getRequestHeaders, setResponseHeader, appendResponseHeader, getRequestURL, getResponseHeader, removeResponseHeader, createError, getQuery as getQuery$1, readBody, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getResponseStatus, getRouterParam, readMultipartFormData, getResponseStatusText } from 'file:///Users/maa/Desktop/JF/compareEx/excel-comparison/node_modules/h3/dist/index.mjs';
 import { Server } from 'node:http';
 import { resolve, dirname, join } from 'node:path';
 import nodeCrypto from 'node:crypto';
@@ -2594,10 +2594,12 @@ async function getIslandContext(event) {
 	return ctx;
 }
 
+const _lazy_KpaO3p = () => Promise.resolve().then(function () { return compare_post$1; });
 const _lazy_qYFRr4 = () => Promise.resolve().then(function () { return renderer$1; });
 
 const handlers = [
   { route: '', handler: _dwcyOj, lazy: false, middleware: true, method: undefined },
+  { route: '/api/compare', handler: _lazy_KpaO3p, lazy: true, middleware: false, method: "post" },
   { route: '/__nuxt_error', handler: _lazy_qYFRr4, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_island/**', handler: _SxA8c9, lazy: false, middleware: false, method: undefined },
   { route: '/**', handler: _lazy_qYFRr4, lazy: true, middleware: false, method: undefined }
@@ -2938,6 +2940,42 @@ const styles = {};
 const styles$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   __proto__: null,
   default: styles
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const compare_post = defineEventHandler(async (event) => {
+  var _a, _b, _c, _d, _e, _f, _g, _h;
+  const config = useRuntimeConfig();
+  const parts = await readMultipartFormData(event);
+  const fd = new FormData();
+  for (const part of parts || []) {
+    if (part.type && part.filename && part.data) {
+      const blob = new Blob([part.data], { type: part.type });
+      fd.append("data", blob, part.filename);
+    }
+  }
+  const resp = await $fetch(config.public.n8nWebhookUrl, {
+    method: "POST",
+    body: fd
+  });
+  const normalized = (resp == null ? void 0 : resp.status) === "success" ? resp : {
+    status: "success",
+    data: {
+      added: ((_a = resp == null ? void 0 : resp.output) == null ? void 0 : _a.added) || [],
+      removed: ((_b = resp == null ? void 0 : resp.output) == null ? void 0 : _b.removed) || [],
+      changed: ((_c = resp == null ? void 0 : resp.output) == null ? void 0 : _c.changed) || ((_d = resp == null ? void 0 : resp.output) == null ? void 0 : _d.updated) || [],
+      summary: {
+        total_added: (((_e = resp == null ? void 0 : resp.output) == null ? void 0 : _e.added) || []).length,
+        total_removed: (((_f = resp == null ? void 0 : resp.output) == null ? void 0 : _f.removed) || []).length,
+        total_changed: (((_g = resp == null ? void 0 : resp.output) == null ? void 0 : _g.changed) || ((_h = resp == null ? void 0 : resp.output) == null ? void 0 : _h.updated) || []).length
+      }
+    }
+  };
+  return normalized;
+});
+
+const compare_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  default: compare_post
 }, Symbol.toStringTag, { value: 'Module' }));
 
 function renderPayloadResponse(ssrContext) {
