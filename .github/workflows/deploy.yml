@@ -11,6 +11,8 @@ jobs:
     environment: vm
     env:
       USE_GCLOUD: ${{ vars.USE_GCLOUD }}
+      USE_NGINX: ${{ vars.USE_NGINX }}
+      USE_SSL: ${{ vars.USE_SSL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,6 +58,25 @@ jobs:
           WantedBy=multi-user.target
           UNIT
 
+      - name: Generate nginx config
+        if: env.USE_NGINX == 'true'
+        run: |
+          APP_DOMAIN="${{ secrets.APP_DOMAIN }}"
+          APP_PORT="${{ secrets.APP_PORT }}"
+          cat > excel-comparison.nginx.conf <<EOF
+          server {
+            listen 80;
+            server_name ${APP_DOMAIN};
+            location / {
+              proxy_set_header Host \$host;
+              proxy_set_header X-Real-IP \$remote_addr;
+              proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto \$scheme;
+              proxy_pass http://127.0.0.1:${APP_PORT};
+            }
+          }
+          EOF
+
       - name: Prepare SSH key
         if: env.USE_GCLOUD != 'true'
         shell: bash
@@ -83,6 +104,9 @@ jobs:
         run: |
           gcloud compute scp nuxt-output.tar.gz ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }}:~/nuxt-output.tar.gz --zone=${{ secrets.GCE_ZONE }} --quiet
           gcloud compute scp excel-comparison.service ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }}:~/excel-comparison.service --zone=${{ secrets.GCE_ZONE }} --quiet
+          if [ "${USE_NGINX}" = "true" ]; then
+            gcloud compute scp excel-comparison.nginx.conf ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }}:~/excel-comparison.nginx.conf --zone=${{ secrets.GCE_ZONE }} --quiet
+          fi
 
       - name: Copy build to VM (SSH)
         if: env.USE_GCLOUD != 'true'
@@ -93,7 +117,7 @@ jobs:
           port: ${{ secrets.VM_SSH_PORT }}
           key_path: ~/.ssh/deploy_key
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
-          source: "nuxt-output.tar.gz,excel-comparison.service"
+          source: "${{ env.USE_NGINX == 'true' && 'nuxt-output.tar.gz,excel-comparison.service,excel-comparison.nginx.conf' || 'nuxt-output.tar.gz,excel-comparison.service' }}"
           target: ~/
 
       - name: Deploy on VM (gcloud)
@@ -121,6 +145,15 @@ jobs:
               echo "HOST=0.0.0.0" | sudo tee -a ${APP_DIR}/.env >/dev/null
               sudo mv ~/excel-comparison.service /etc/systemd/system/excel-comparison.service
               sudo ln -sfn ${RELEASE} ${CURRENT}
+              if [ "${USE_NGINX}" = "true" ]; then
+                sudo apt-get update -y
+                sudo apt-get install -y nginx
+                sudo mv -f ~/excel-comparison.nginx.conf /etc/nginx/sites-available/excel-comparison
+                sudo ln -sfn /etc/nginx/sites-available/excel-comparison /etc/nginx/sites-enabled/excel-comparison
+                sudo nginx -t
+                sudo systemctl enable nginx
+                sudo systemctl restart nginx
+              fi
             else
               RELEASE=${USER_APP_DIR}/releases/${RELEASE_SHA}
               CURRENT=${USER_APP_DIR}/current
@@ -141,6 +174,20 @@ jobs:
                 echo "Node.js is not installed and sudo is not available; please install Node or grant admin."
                 exit 1
               fi
+            fi
+          '
+      - name: Configure SSL with certbot (gcloud)
+        if: env.USE_GCLOUD == 'true' && env.USE_NGINX == 'true' && env.USE_SSL == 'true'
+        run: |
+          gcloud compute ssh ${{ secrets.VM_USER }}@${{ secrets.GCE_INSTANCE }} --zone=${{ secrets.GCE_ZONE }} --quiet --command '
+            set -e
+            if sudo -n true 2>/dev/null; then
+              sudo apt-get update -y
+              sudo apt-get install -y certbot python3-certbot-nginx
+              sudo certbot --nginx -d ${{ secrets.APP_DOMAIN }} -m ${{ secrets.LETSENCRYPT_EMAIL }} --agree-tos --redirect -n || true
+              sudo systemctl reload nginx || true
+            else
+              echo "Skipping SSL: sudo not available"
             fi
           '
       - name: Restart service (gcloud)
