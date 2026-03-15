@@ -2943,7 +2943,7 @@ const styles$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const compare_post = defineEventHandler(async (event) => {
-  var _a, _b, _c, _d, _e, _f, _g, _h;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
   const config = useRuntimeConfig();
   const parts = await readMultipartFormData(event);
   const fd = new FormData();
@@ -2957,20 +2957,25 @@ const compare_post = defineEventHandler(async (event) => {
     method: "POST",
     body: fd
   });
-  const normalized = (resp == null ? void 0 : resp.status) === "success" ? resp : {
+  if ((resp == null ? void 0 : resp.status) === "error") return resp;
+  const container = (_c = (_b = (_a = resp == null ? void 0 : resp.data) != null ? _a : resp == null ? void 0 : resp.output) != null ? _b : resp) != null ? _c : {};
+  const added = (_d = container == null ? void 0 : container.added) != null ? _d : [];
+  const removed = (_e = container == null ? void 0 : container.removed) != null ? _e : [];
+  const changed = (_i = (_h = (_g = (_f = container == null ? void 0 : container.changed) != null ? _f : container == null ? void 0 : container.modified) != null ? _g : container == null ? void 0 : container.updated) != null ? _h : container == null ? void 0 : container.modifications) != null ? _i : [];
+  const summary = (_j = container == null ? void 0 : container.summary) != null ? _j : {
+    total_added: Array.isArray(added) ? added.length : 0,
+    total_removed: Array.isArray(removed) ? removed.length : 0,
+    total_changed: Array.isArray(changed) ? changed.length : 0
+  };
+  return {
     status: "success",
     data: {
-      added: ((_a = resp == null ? void 0 : resp.output) == null ? void 0 : _a.added) || [],
-      removed: ((_b = resp == null ? void 0 : resp.output) == null ? void 0 : _b.removed) || [],
-      changed: ((_c = resp == null ? void 0 : resp.output) == null ? void 0 : _c.changed) || ((_d = resp == null ? void 0 : resp.output) == null ? void 0 : _d.updated) || [],
-      summary: {
-        total_added: (((_e = resp == null ? void 0 : resp.output) == null ? void 0 : _e.added) || []).length,
-        total_removed: (((_f = resp == null ? void 0 : resp.output) == null ? void 0 : _f.removed) || []).length,
-        total_changed: (((_g = resp == null ? void 0 : resp.output) == null ? void 0 : _g.changed) || ((_h = resp == null ? void 0 : resp.output) == null ? void 0 : _h.updated) || []).length
-      }
+      added: Array.isArray(added) ? added : [],
+      removed: Array.isArray(removed) ? removed : [],
+      changed: Array.isArray(changed) ? changed : [],
+      summary
     }
   };
-  return normalized;
 });
 
 const compare_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({

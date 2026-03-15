@@ -14,6 +14,11 @@ export interface ComparisonResult {
     added: any[]
     removed: any[]
     changed: any[]
+    summary?: {
+      total_added: number
+      total_removed: number
+      total_changed: number
+    }
   }
   message?: string
   code?: string
@@ -26,7 +31,7 @@ export const useFilesStore = defineStore('files', () => {
   const uploadProgress = ref(0)
 
   const addFiles = (newFiles: File[]) => {
-    const fileItems: FileItem[] = newFiles.map(file => ({
+    const fileItems: FileItem[] = newFiles.map((file: File) => ({
       id: Math.random().toString(36).substr(2, 9),
       name: file.name,
       size: file.size,
@@ -38,7 +43,7 @@ export const useFilesStore = defineStore('files', () => {
   }
 
   const removeFile = (id: string) => {
-    files.value = files.value.filter(file => file.id !== id)
+    files.value = files.value.filter((file: FileItem) => file.id !== id)
   }
 
   const clearFiles = () => {

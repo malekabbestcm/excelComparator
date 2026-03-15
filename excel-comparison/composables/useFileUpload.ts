@@ -1,9 +1,9 @@
+import { ValidationResult, validateFile } from '~/utils/fileValidation'
+
 import { useFilesStore } from '~/stores/files'
-import { validateFile, ValidationResult } from '~/utils/fileValidation'
 
 export const useFileUpload = () => {
   const store = useFilesStore()
-  const config = useRuntimeConfig()
   
   const uploadFiles = async (): Promise<void> => {
     if (store.files.length !== 2) {
@@ -23,14 +23,14 @@ export const useFileUpload = () => {
 
     try {
       const formData = new FormData()
-      store.files.forEach(fileItem => {
+      store.files.forEach((fileItem: { file: File }) => {
         formData.append('data', fileItem.file)
       })
 
-      const response = await $fetch(config.public.n8nWebhookUrl, {
+      const response = await $fetch('/api/compare', {
         method: 'POST',
         body: formData,
-        onRequest({ request }) {
+        onRequest() {
           store.setUploadProgress(50)
         }
       })

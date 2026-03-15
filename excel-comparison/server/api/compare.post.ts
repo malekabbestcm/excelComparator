@@ -14,22 +14,33 @@ export default defineEventHandler(async (event) => {
     method: 'POST',
     body: fd
   })
-  const normalized =
-    resp?.status === 'success'
-      ? resp
-      : {
-          status: 'success',
-          data: {
-            added: resp?.output?.added || [],
-            removed: resp?.output?.removed || [],
-            changed: resp?.output?.changed || resp?.output?.updated || [],
-            summary: {
-              total_added: (resp?.output?.added || []).length,
-              total_removed: (resp?.output?.removed || []).length,
-              total_changed:
-                (resp?.output?.changed || resp?.output?.updated || []).length
-            }
-          }
-        }
-  return normalized
+
+  if (resp?.status === 'error') return resp
+
+  const container = resp?.data ?? resp?.output ?? resp ?? {}
+  const added = container?.added ?? []
+  const removed = container?.removed ?? []
+  const changed =
+    container?.changed ??
+    container?.modified ??
+    container?.updated ??
+    container?.modifications ??
+    []
+
+  const summary =
+    container?.summary ?? {
+      total_added: Array.isArray(added) ? added.length : 0,
+      total_removed: Array.isArray(removed) ? removed.length : 0,
+      total_changed: Array.isArray(changed) ? changed.length : 0
+    }
+
+  return {
+    status: 'success',
+    data: {
+      added: Array.isArray(added) ? added : [],
+      removed: Array.isArray(removed) ? removed : [],
+      changed: Array.isArray(changed) ? changed : [],
+      summary
+    }
+  }
 });

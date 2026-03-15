@@ -73,17 +73,16 @@ import { useFilesStore } from '~/stores/files'
 
 const store = useFilesStore()
 const comparisonResult = computed(() => store.comparisonResult)
-console.log("testttt",comparisonResult.value?.output);
 
 const addedCount = computed(() => {
-  return comparisonResult.value?.output?.added?.length || 0
+  return comparisonResult.value?.data?.added?.length || 0
 })
 
 const removedCount = computed(() => {
-  return comparisonResult.value?.output?.removed?.length || 0
+  return comparisonResult.value?.data?.removed?.length || 0
 })
 
 const changedCount = computed(() => {
-  return comparisonResult.value?.output?.changed?.length || 0
+  return comparisonResult.value?.data?.changed?.length || 0
 })
 </script>

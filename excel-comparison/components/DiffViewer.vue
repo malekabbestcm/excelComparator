@@ -102,6 +102,21 @@
             <div v-if="item.key" class="mb-2">
               <span class="text-sm font-medium text-amber-800">Key: {{ item.key }}</span>
             </div>
+            <div v-if="item.changes && item.changes.length" class="mb-3">
+              <p class="text-xs font-medium text-gray-600 mb-1">Changes:</p>
+              <div class="space-y-1">
+                <div
+                  v-for="(change, changeIndex) in item.changes"
+                  :key="`change-${index}-${changeIndex}`"
+                  class="text-xs text-gray-700"
+                >
+                  <span class="font-medium">{{ change.field }}:</span>
+                  <span class="text-red-700 ml-1">{{ formatJson(change.from) }}</span>
+                  <span class="mx-1">→</span>
+                  <span class="text-green-700">{{ formatJson(change.to) }}</span>
+                </div>
+              </div>
+            </div>
             <div class="grid md:grid-cols-2 gap-4">
               <div>
                 <p class="text-xs font-medium text-gray-600 mb-1">Before:</p>
@@ -143,15 +158,27 @@ const expandedSections = ref({
 })
 
 const addedItems = computed(() => {
-  return comparisonResult.value?.output?.added || []
+  return comparisonResult.value?.data?.added || []
 })
 
 const removedItems = computed(() => {
-  return comparisonResult.value?.output?.removed || []
+  return comparisonResult.value?.data?.removed || []
 })
 
+const normalizeChangedItem = (item: any) => {
+  if (!item || typeof item !== 'object') return { key: null, changes: [], before: item, after: item }
+
+  const key = item.key ?? item.id ?? item.ID ?? item.code ?? item.sku ?? null
+  const changes = Array.isArray(item.changes) ? item.changes : Array.isArray(item.diff) ? item.diff : []
+  const before = item.before ?? item.rowA ?? item.a ?? item.original ?? item.from ?? item.old ?? null
+  const after = item.after ?? item.rowB ?? item.b ?? item.modified ?? item.to ?? item.new ?? null
+
+  return { ...item, key, changes, before, after }
+}
+
 const changedItems = computed(() => {
-  return comparisonResult.value?.output?.changed || []
+  const raw = comparisonResult.value?.data?.changed || []
+  return raw.map(normalizeChangedItem)
 })
 
 const noChanges = computed(() => {
